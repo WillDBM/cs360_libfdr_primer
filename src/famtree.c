@@ -28,7 +28,8 @@ typedef struct {
 
 } Person;
 
-
+// large number of healper functions to make main 
+// easier to read
 
 Person* find_person(JRB tree, char* name) {
 	
@@ -230,3 +231,119 @@ char* get_line_value(IS is) {
 
 	return value;
 }
+
+int main() {
+
+	JRB tree, temp;
+	Dllist dtemp;
+	IS is;
+	Person *person;
+
+	int nsize;
+
+	// read input
+	is = new_inputstruct(NULL);
+	tree = make_jrb();
+
+	while (get_line(is) >= 0) {
+		// Skip unneccesarry lines
+		if (is->NF <= 1) continue;
+
+		// Keyword is the first word in line
+		char *keyword = is->fields[0];
+
+		char *value = get_line_value(is);
+
+		if (strcmp(keyword, "PERSON") == 0) {
+			person = find_person(tree, value);
+
+			// create the person if they don't already exist
+			if (person == NULL) person = insert_person(tree, value);
+		} else if (strcmp(keyword, "FATHER_OF") == 0 || strcmp(keyword, "MOTHER_OF") == 0) {
+			Person *child = find_person(tree, value);
+
+			// 0 if father 1 if mother
+			int father = strcmp(keyword, "FATHER_OF") == 0 ? 1 : 0;
+
+			if (person_set_sex(person, father ? 'M' : 'F') == 1) {
+				fprintf(stderr, "Bad input - sex mismatch on line %d\n", is->line);
+
+				// Since we're exiting, free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			}
+
+			// create person if they don't already exist
+			if (child == NULL) 
+				child = insert_person(tree, value);
+
+			int set_parent = person_set_parent(child, person, father);
+			if(set_parent == 1) {
+				fprintf(stderr, "Bad input - child with two %s on line %d\n", father ? "fathers": "mothers", is->line);
+
+				// free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			} else if (set_parent == 2) {
+				fprintf(stderr, "Bad input - sex mismatch on line %d\n", is->line);
+
+				// free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			}
+
+			person_add_child(person, child);
+
+		} else if (strcmp(keyword, "FATHER") == 0 || strcmp(keyword, "MOTHER") == 0) {
+			// 0 is a father, 1 is a mother
+			int father = strcmp(keyword, "FATHER") == 0 ? 1 : 0;
+
+			Person *parent = find_person(tree, value);
+
+			// create parent if they don't already exist
+			if (parent == NULL) 
+				parent = insert_person(tree, value);
+
+			if (person_set_sex(parent, father ? 'M' : 'F') == 1) {
+				fprintf(stderr, "Bad input - sex mismatch on line %d\n", is->line);
+
+				//free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			}
+
+			int set_parent = person_set_parent(person, parent, father);
+			if (set_parent == 1) {
+				fprintf(stderr, "Bad input - child with two %s on line %d\n", father ? "fathers" : "mothers", is->line);
+
+				//free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			} else if (set_parent == 2) {
+				fprintf(stderr, "Bad input - sex mismatch on line %d\n", is->line);
+
+				//free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			}
+
+			person_add_child(parent, person);
+		} else if (strcmp(keyword, "SEX") == 0) {
+
+
+		}
+	}
+}
+
