@@ -281,7 +281,7 @@ int main() {
 
 			int set_parent = person_set_parent(child, person, father);
 			if(set_parent == 1) {
-				fprintf(stderr, "Bad input - child with two %s on line %d\n", father ? "fathers": "mothers", is->line);
+				fprintf(stderr, "Bad input -- child with two %s on line %d\n", father ? "fathers": "mothers", is->line);
 
 				// free memory
 				free_all_persons(tree);
@@ -322,7 +322,7 @@ int main() {
 
 			int set_parent = person_set_parent(person, parent, father);
 			if (set_parent == 1) {
-				fprintf(stderr, "Bad input - child with two %s on line %d\n", father ? "fathers" : "mothers", is->line);
+				fprintf(stderr, "Bad input -- child with two %s on line %d\n", father ? "fathers" : "mothers", is->line);
 
 				//free memory
 				free_all_persons(tree);
@@ -341,9 +341,74 @@ int main() {
 
 			person_add_child(parent, person);
 		} else if (strcmp(keyword, "SEX") == 0) {
+			if (person_set_sex(person, is->fields[1][0]) == 1) {
+				fprintf(stderr, "Bad input - sex mismatch on line %d\n", is->line);
 
+				//free memory
+				free_all_persons(tree);
+				free(value);
+				jettison_inputstruct(is);
+				exit(1);
+			}
 
 		}
+
+		// free value
+		free(value);
 	}
+
+		// check for inbreading/cycle
+	jrb_traverse(temp, tree) {
+		
+		person = (Person *)temp->val.v;
+		if (person_is_own_descenant(person)) {
+			fprintf(stderr, "Bad input -- cycle in specification\n");
+
+			//free memory
+			free_all_persons(tree);
+			jettison_inputstruct(is);
+			exit(1);
+		}
+	}
+
+	Dllist print_list;
+	print_list = new_dllist();
+
+	// add all to printlist
+	jrb_traverse (temp, tree) {
+		person = (Person *)temp->val.v;
+		dll_append(print_list, new_jval_v((void *)person));
+	}
+
+	while(!dll_empty(print_list)) {
+		// get first in list
+		person = (Person *)dll_first(print_list)->val.v;
+
+		// remove it from list
+		dll_delete_node(dll_first(print_list));
+
+		if(!person->printed) {
+			// only print if both parents are printed
+			if(person_parents_printed(tree, person)) {
+				person_print_info(person);
+				person->printed = 1;
+
+				// add dhildren to list
+				dll_traverse(dtemp, person->children) {
+					Person *child = (Person *)dtemp->val.v;
+					dll_append(print_list, new_jval_v((void *)child));
+				}
+			}
+		}
+	}
+		
+	// free all memory
+	free_all_persons(tree);
+	jettison_inputstruct(is);
+	free_dllist(print_list);
+
+	exit(0);
 }
+
+
 
